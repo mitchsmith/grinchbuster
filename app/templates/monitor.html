@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Stream Test</title>
+  <!-- link href="/static/css/video-js.css" rel="stylesheet" -->
+  <!--script src="/static/js/video.min.js"></script -->
+</head>
+<body>
+  <!--video id="my_video_1" class="video-js vjs-default-skin" controls preload="auto" width="640" data-setup='{}'>
+    <source src="/static/media/test.mp4"/>
+    <source src="/static/media/test.m3u8"  type="application/x-mpegURL"/>
+
+    Sorry, your browser doesn't support embedded videos.
+
+  </video -->
+  <img src="{{image_a}}"><br>
+  <img src="{{image_b}}"><br>
+
+  <div id="capture">
+    <!-- input id="shutter" type="button" name="shutter" value="Capture Image" -->
+  </div>
+
+  <div id="output">
+    <h1>{{ difference }}</h1>
+
+    {% for file in listing %}
+    <li>{{ file }}</li>
+    {% endfor %}
+  </div>
+
+  <script type="text/javascript"></script>
+
+  <!-- script type="text/javascript" src="js/MotionDetector.js"></script -->
+
+  <script type="text/javascript">
+    idx = 0;
+    recording = 0;
+
+    function resizeBase64Img(base64, width, height) {
+      var canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      var context = canvas.getContext("2d");
+      var deferred = $.Deferred();
+      $("<img/>").attr("src", "data:image/png;base64," + base64).load(function() {
+          context.scale(width/this.width,  height/this.height);
+          context.drawImage(this, 0, 0); 
+          deferred.resolve($("<img/>").attr("src", canvas.toDataURL()));               
+      });
+      return deferred.promise();    
+    }
+
+    // resizeBase64Img(oldBase64, 100, 100).then(function(newImg){
+    //   $("body").append(newImg);
+    // });
+    var images = [document.createElement('img'), document.createElement('img')];
+    var canvases = [document.createElement('canvas'), document.createElement('canvas')];
+    var ctx = [];
+      
+    var captureImage = function() {
+      var thevideo = document.getElementById('my_video_1').children[0];
+      var thecanvas = document.createElement('canvas');
+      var context = thecanvas.getContext('2d');
+      context.drawImage(thevideo, 0, 0, 300, 150);
+      var dataURL = thecanvas.toDataURL();
+
+      //create images to compare
+      var output = document.getElementById('output');
+      if (output.children.length < 2) {  
+        images[idx].setAttribute('width', 20);
+        images[idx].setAttribute('height', 20);
+        output.appendChild(images[idx]);  
+      }
+      images[idx].setAttribute('src', dataURL);
+      ctx[idx] = canvases[idx].getContext('2d');
+
+      images[idx].onload = function() {
+        ctx[idx].drawImage(images[idx], 0, 0, 20, 20);
+        //images[idx].style.display = 'none';
+        //document.body.append(canvases[i]);
+        //console.log(ctx[i].getImageData(0, 0, 20, 20));
+      }
+      idx = (idx + 1) % 2;
+    }
+
+    var compare_images = function() {
+      console.log("Comparing images . . .");
+      var deltas = [];
+      let previous = ctx[0].getImageData(0, 0, 20, 20);
+      let current = ctx[1].getImageData(0, 0, 20, 20);
+      // Check for non-zero alpha channel on first pixel at index 3; alpha == 0 indicates empty imagedata array.
+      if (current.data[3] && previous.data[3]) {
+        for (let i = 0; i < current.data.length; i += 4) {
+          // Position in the x direction
+          let x = (i % 80 / 4);
+          // Position in the y direction, times 255
+          let y = Math.ceil(i / 80);
+          // magnitude
+          let m = Math.abs(current.data[i] - previous.data[i]);
+          if (m > 100) {
+            //console.log('changes at (' + x + ',' + y + '), ' + m);
+            deltas.push([x, y, m]);
+          }
+        }
+      }
+      return deltas;
+    }
+
+    var runDetector = function() {
+      console.log('detector called . . .');
+      var next_delta = []
+      if (ctx.length >= 2) {
+        next_delta = compare_images();
+        console.log(next_delta.length);
+      }
+      console.log('getting next image');
+      captureImage();
+      timer_id = window.setTimeout(runDetector, 1000);
+    }
+
+    //document.getElementById('shutter').onclick = function() {console.log('Running detector...'); runDetector();};
+
+  </script>
+</body>
+</html>
